@@ -1,0 +1,149 @@
+import numpy as np
+import tenpy.linalg.np_conserved as npc
+
+from psi_construction import build_mps_AR
+from tensorial_derivative import tensorial_derivative
+from update_rule import newupdate
+
+
+def SweepingAlgorithm(b, d, D, err):
+    N = b.L
+    psi = build_mps_AR(d=d, N=N, D=D)
+    print("PSI")
+    for k in range(psi.L):
+        psik = psi.get_B(k).to_ndarray()
+        print(f"Site {k}, shape = {psik.shape}:\n{psik.transpose(1,0,2)}\n")
+
+
+    # overlap iniziale
+    k_ref = b.overlap(psi)
+    print("First ansatz:",k_ref)
+    currency = []
+    currency.append(k_ref)
+    steps = []
+    type = []
+    steps.append(1)
+    type.append('-->')
+
+    # primo update sul sito 1 (come prima)
+    site = 1
+    A_tilde = tensorial_derivative(psi=psi, b=b, site=site)
+    A_prime = A_tilde.to_ndarray()
+    print("First tensorial derivative",A_prime)
+    L_out = newupdate(A_prime)
+    d_phys, Dr = L_out.shape
+    L = L_out.reshape(1, d_phys, Dr)
+    print("First max",L)
+    L_tenpy = npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR'])
+    psi.set_B(site - 1, L_tenpy)
+
+    nstep = 1
+    updates_since_check = 1   # abbiamo già fatto un update
+    K = 4         # o N, 2*N, ecc.
+    max_steps = 100000
+    #print("PSI")
+    #for k in range(psi.L):
+    #    psik = psi.get_B(k).to_ndarray()
+    #    print(f"Site {k}, shape = {psik.shape}:\n{psik.transpose(1,0,2)}\n")
+
+    while nstep < max_steps:
+
+        # sweep left -> right
+        for i in range(N - 1):
+            site = i + 1
+            if site == 1 and nstep == 1:
+                continue
+     
+            #print("PSI PRE DERIVATA STEP",nstep)
+            #for k in range(psi.L):
+            #    psik = psi.get_B(k).to_ndarray()
+            #    print(f"Site {k}, shape = {psik.shape}:\n{psik.transpose(1,0,2)}\n")
+            A_prime = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
+            #print("-----------")
+            print("step:",nstep)
+            print("site:",site)
+            
+
+            if 1 < site < N:
+                Dl, d_phys, Dr = A_prime.shape
+                L = newupdate(A_prime.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
+                print("tensorial derivative",A_prime.transpose(1,0,2))
+                print("maximizer",L.transpose(1,0,2))
+                type.append('-->')
+            else:
+                d_phys, Dr = A_prime.shape
+                L =  newupdate(A_prime).reshape(1, d_phys, Dr)
+                print("tensorial derivative",A_prime)
+                print("maximizer",L)
+                type.append('<--')
+
+            
+            psi.set_B(i, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
+            #print("PSI")
+            #for k in range(psi.L):
+            #    psik = psi.get_B(k).to_ndarray()
+            #    print(f"Site {k}, shape = {psik.shape}:\n{psik.transpose(1,0,2)}\n")
+
+            nstep += 1
+            updates_since_check += 1
+            k_curr = b.overlap(psi)
+            currency.append(k_curr)
+            steps.append(site)
+            print("current price",k_curr)
+            print("reference price",k_ref)
+
+            if updates_since_check >= K:
+                
+                if np.abs(k_curr - k_ref) <= err * max(np.abs(k_ref), 1e-12):
+                    return psi, k_curr, nstep, currency, steps, type
+                k_ref = k_curr
+                updates_since_check = 0
+            #print("----------")
+
+        # sweep right -> left
+        #print("SWEEP RIGHT")
+        for j in range(N - 1, 0, -1):
+            site = j + 1
+            A_prime = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
+            #print("-----------")
+            print("step:",nstep)
+            print("site:",site)
+
+            
+
+            if 1 < site < N:
+                Dl, d_phys, Dr = A_prime.shape
+                R = newupdate(A_prime.reshape(Dl, Dr * d_phys).T).T.reshape(Dl, d_phys, Dr)
+                #R = newupdate(A_prime.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(2,0,1)
+                print("tensorial derivative",A_prime.transpose(1,0,2))
+                print("maximizer",R.transpose(1,0,2))
+                type.append('<--')
+            else:
+                Dl, d_phys = A_prime.shape
+                R = newupdate(A_prime.T).T.reshape(Dl, d_phys, 1)
+                #R = newupdate(A_prime).reshape(1, d_phys, Dr).transpose(2,1,0)
+                print("tensorial derivative SPIKE",A_prime)
+                print("maximizer",R.transpose(1,0,2))
+                print(R.shape)
+                type.append('-->')
+
+            psi.set_B(j, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))
+
+            nstep += 1
+            updates_since_check += 1
+            k_curr = b.overlap(psi)
+            currency.append(k_curr)
+            steps.append(site)
+            print("current price",k_curr)
+            print("reference price",k_ref)
+            
+
+            if updates_since_check >= K:
+                
+                if np.abs(k_curr - k_ref) <= err * max(np.abs(k_ref), 1e-12):
+                    return psi, k_curr, nstep, currency, steps, type
+                k_ref = k_curr
+                updates_since_check = 0
+            #print("----------")
+
+    raise RuntimeError("SweepingAlgorithm did not converge within max_steps")
