@@ -44,3 +44,22 @@ def newupdate(
             X[~mask, :] = 0
 
     return X
+
+
+def update_A(
+    G: np.ndarray,
+    *,
+    dtype=np.uint8,
+    nan_as_zero: bool = True,
+) -> np.ndarray:
+    """
+    Entrywise update rule:
+        X_ij = 1 if G_ij > 0
+        X_ij = 0 otherwise
+
+    If nan_as_zero=True, NaNs are treated as 0.
+    """
+    if nan_as_zero:
+        G = np.where(np.isnan(G), 0.0, G)
+
+    return (G > 0).astype(dtype)

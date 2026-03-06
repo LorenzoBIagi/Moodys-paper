@@ -70,19 +70,26 @@ def random_R(
 
 
 # controllare generazione A
-def random_A1(d: int, D: int, seed=None, *, check: bool = True) -> np.ndarray:
+def random_A(d: int, Dl: int, Dr: int, seed=None, *, check: bool = True) -> np.ndarray:
     """
-    First site core A1, shape (d, 1, D).
-    Continuous in [0,1] (uniform). To have occasional exact 1.0 values,
-    we can optionally snap a tiny fraction to 1.0 after sampling.
+    Core A di shape (d, Dl, Dr), con entrate binarie in {0,1}.
     """
+    if d < 1 or int(d) != d:
+        raise ValueError("`d` deve essere un intero positivo.")
+    if Dl < 1 or int(Dl) != Dl:
+        raise ValueError("`Dl` deve essere un intero positivo.")
+    if Dr < 1 or int(Dr) != Dr:
+        raise ValueError("`Dr` deve essere un intero positivo.")
+
+    d = int(d)
+    Dl = int(Dl)
+    Dr = int(Dr)
+
     rng = np.random.default_rng(seed)
-    A = rng.uniform(0.0, 1.0, size=(d, 1, D)).astype(np.float64)  # in [0,1)
-    
-    # Optional: snap some values to 1.0 with tiny prob (disabled by default)
-    # snap_mask = rng.random(A.shape) < 1e-4
-    # A[snap_mask] = 1.0
-    
+    A = rng.integers(0, 2, size=(d, Dl, Dr), dtype=np.int64)
+
     if check:
-        _check_box_0_1(A)
+        if not np.all((A == 0) | (A == 1)):
+            raise ValueError("A deve avere solo entrate in {0,1}.")
+
     return A
