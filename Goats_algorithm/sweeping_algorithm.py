@@ -230,12 +230,16 @@ def Sweep_double_conflict(b, d, D, err, K):
         
         #PRIMO CONFLITTO (A LOC è IN CONVENZIONE NOSTRA)
         A_loc_ref = A_loc
-        steps.append(A_loc,A_loc+1)
-        psi, A_loc = double_conflict(b=b, psi=psi, A_loc=A_loc, direction = sweep)
+        steps.append(A_loc)
+        steps.append(A_loc+1)
+        psi, A_loc = double_conflict(b=b, psi=psi, A_loc=A_loc, direction = 'left')
         nstep += 2
         updates_since_check += 2
         k_curr = b.overlap(psi)
-        currency.append(k_curr,k_curr)
+        currency.append(k_curr)
+        currency.append(k_curr)
+        type.append('-->')
+        type.append('-->')
 
         #ORA OTTIMIZZIAMO DA DOPO A ALLA FINE
         ## L*L*L*ARRR -- > L*L*L*A*R*RR , L*L*L*L*A*RR in un caso la R è già ottimizzata ma la riottimizziamo
@@ -249,7 +253,6 @@ def Sweep_double_conflict(b, d, D, err, K):
             G = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
             #print("step:",nstep)
             #print("site:",site)
-            type.append('-->')
             if A_loc_ref == A_loc and i == A_loc:
                 continue
             
@@ -267,7 +270,8 @@ def Sweep_double_conflict(b, d, D, err, K):
                 #print(R.shape)
 
             psi.set_B(i, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))    
-           
+
+            type.append('-->')
             nstep += 1
             updates_since_check += 1
             k_curr = b.overlap(psi)
@@ -319,12 +323,16 @@ def Sweep_double_conflict(b, d, D, err, K):
 
         #SECONDO CONFLITTO
         A_loc_ref = A_loc
-        steps.append(A_loc,A_loc-1)
-        psi, A_loc = double_conflict(b = b, psi = psi, A_loc = A_loc, direction = sweep)
+        steps.append(A_loc)
+        steps.append(A_loc - 1)
+        psi, A_loc = double_conflict(b = b, psi = psi, A_loc = A_loc, direction = 'right')
         nstep += 2
         updates_since_check += 2
         k_curr = b.overlap(psi)
-        currency.append(k_curr,k_curr)
+        currency.append(k_curr)
+        currency.append(k_curr)
+        type.append('<--')
+        type.append('<--')
 
         #L*..L*A*R**R**..R**R**  ----> L*...L**A**R**...R** oppure L*...A**R**R**....R**
         for i in range(A_loc-2, -1, -1):
@@ -336,7 +344,6 @@ def Sweep_double_conflict(b, d, D, err, K):
             G = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
             #print("step:",nstep)
             #print("site:",site)
-            type.append('<--')
 
             if A_loc_ref == A_loc and i == A_loc -2:
                 continue
@@ -353,7 +360,8 @@ def Sweep_double_conflict(b, d, D, err, K):
                 #print("maximizer",L)
 
             psi.set_B(i, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
-
+            
+            type.append('<--')
             nstep += 1
             updates_since_check += 1
             k_curr = b.overlap(psi)
