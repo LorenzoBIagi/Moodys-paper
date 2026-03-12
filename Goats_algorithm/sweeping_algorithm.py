@@ -162,6 +162,15 @@ def Sweep_double_conflict(b, d, D, err, K):
 
 
     # overlap iniziale
+    # primo update sul sito 1 (come prima)
+    site = 1
+    G = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
+    d_phys, Dr = G.shape
+    L =  newupdate(G).reshape(1, d_phys, Dr)
+    psi.set_B(site - 1, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
+
+    nstep = 1
+    updates_since_check = 1   # abbiamo già fatto un update
     k_ref = b.overlap(psi)
     #print("First ansatz:",k_ref)
     currency = []
@@ -171,20 +180,6 @@ def Sweep_double_conflict(b, d, D, err, K):
     steps.append(1)
     type.append('-->')
 
-    # primo update sul sito 1 (come prima)
-    site = 1
-    A_tilde = tensorial_derivative(psi=psi, b=b, site=site)
-    A_prime = A_tilde.to_ndarray()
-    #print("First tensorial derivative",A_prime)
-    L_out = newupdate(A_prime)
-    d_phys, Dr = L_out.shape
-    L = L_out.reshape(1, d_phys, Dr)
-    #print("First max",L)
-    L_tenpy = npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR'])
-    psi.set_B(site - 1, L_tenpy)
-
-    nstep = 1
-    updates_since_check = 1   # abbiamo già fatto un update
     #K = K questo ci dice che K è uguale al K in input (o N, 2*N, ecc.)
     max_steps = 100000
     #print("PSI")
@@ -234,7 +229,13 @@ def Sweep_double_conflict(b, d, D, err, K):
 
         
         #PRIMO CONFLITTO (A LOC è IN CONVENZIONE NOSTRA)
+        A_loc_ref = A_loc
+        steps.append(A_loc,A_loc+1)
         psi, A_loc = double_conflict(b=b, psi=psi, A_loc=A_loc, direction = sweep)
+        nstep += 2
+        updates_since_check += 2
+        k_curr = b.overlap(psi)
+        currency.append(k_curr,k_curr)
 
         #ORA OTTIMIZZIAMO DA DOPO A ALLA FINE
         ## L*L*L*ARRR -- > L*L*L*A*R*RR , L*L*L*L*A*RR in un caso la R è già ottimizzata ma la riottimizziamo
@@ -249,7 +250,9 @@ def Sweep_double_conflict(b, d, D, err, K):
             #print("step:",nstep)
             #print("site:",site)
             type.append('-->')
-
+            if A_loc_ref == A_loc and i == A_loc:
+                continue
+            
             if site != N:
                 Dl, d_phys, Dr = G.shape
                 R = newupdate(G.reshape(Dl, Dr * d_phys).T).T.reshape(Dl, d_phys, Dr)
@@ -263,8 +266,8 @@ def Sweep_double_conflict(b, d, D, err, K):
                 #print("maximizer",R.transpose(1,0,2))
                 #print(R.shape)
 
-            psi.set_B(i, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))
-            
+            psi.set_B(i, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))    
+           
             nstep += 1
             updates_since_check += 1
             k_curr = b.overlap(psi)
@@ -315,9 +318,13 @@ def Sweep_double_conflict(b, d, D, err, K):
 
 
         #SECONDO CONFLITTO
+        A_loc_ref = A_loc
+        steps.append(A_loc,A_loc-1)
         psi, A_loc = double_conflict(b = b, psi = psi, A_loc = A_loc, direction = sweep)
-
-
+        nstep += 2
+        updates_since_check += 2
+        k_curr = b.overlap(psi)
+        currency.append(k_curr,k_curr)
 
         #L*..L*A*R**R**..R**R**  ----> L*...L**A**R**...R** oppure L*...A**R**R**....R**
         for i in range(A_loc-2, -1, -1):
@@ -331,18 +338,21 @@ def Sweep_double_conflict(b, d, D, err, K):
             #print("site:",site)
             type.append('<--')
 
+            if A_loc_ref == A_loc and i == A_loc -2:
+                continue
+            
             if site != 1:
                 Dl, d_phys, Dr = G.shape
                 L = newupdate(G.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
                 #print("tensorial derivative",A_prime.transpose(1,0,2))
                 #print("maximizer",L.transpose(1,0,2))
             else:
-                d_phys, Dr = A_prime.shape
-                L =  newupdate(A_prime).reshape(1, d_phys, Dr)
+                d_phys, Dr = G.shape
+                L =  newupdate(G).reshape(1, d_phys, Dr)
                 #print("tensorial derivative",A_prime)
                 #print("maximizer",L)
 
-            psi.set_B(i, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))
+            psi.set_B(i, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
 
             nstep += 1
             updates_since_check += 1
