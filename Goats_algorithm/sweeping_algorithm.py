@@ -317,11 +317,46 @@ def Sweep_double_conflict(b, d, D, err, K):
         #SECONDO CONFLITTO
         psi, A_loc = double_conflict(b = b, psi = psi, A_loc = A_loc, direction = sweep)
 
+
+
+        #L*..L*A*R**R**..R**R**  ----> L*...L**A**R**...R** oppure L*...A**R**R**....R**
         for i in range(A_loc-2, -1, -1):
 
             sweep = 'right'
             
             site = i + 1 ## quindi site va da Aloc-1 a 1 incluso
 
+            G = tensorial_derivative(psi=psi, b=b, site=site).to_ndarray()
+            #print("step:",nstep)
+            #print("site:",site)
+            type.append('<--')
+
+            if site != 1:
+                Dl, d_phys, Dr = G.shape
+                L = newupdate(G.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
+                #print("tensorial derivative",A_prime.transpose(1,0,2))
+                #print("maximizer",L.transpose(1,0,2))
+            else:
+                d_phys, Dr = A_prime.shape
+                L =  newupdate(A_prime).reshape(1, d_phys, Dr)
+                #print("tensorial derivative",A_prime)
+                #print("maximizer",L)
+
+            psi.set_B(i, npc.Array.from_ndarray_trivial(R, labels=['vL', 'p', 'vR']))
+
+            nstep += 1
+            updates_since_check += 1
+            k_curr = b.overlap(psi)
+            currency.append(k_curr)
+            steps.append(site)
+            print("current price",k_curr)
+            print("reference price",k_ref)
+
+            if updates_since_check >= K:
+                
+                if np.abs(k_curr - k_ref) <= err * max(np.abs(k_ref), 1e-12):
+                    return psi, k_curr, nstep, currency, steps, type
+                k_ref = k_curr
+                updates_since_check = 0               
 
     raise RuntimeError("SweepingAlgorithm did not converge within max_steps")
