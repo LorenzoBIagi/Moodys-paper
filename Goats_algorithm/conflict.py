@@ -13,17 +13,25 @@ def double_conflict(b, psi, A_loc, direction, seed=None):
     psi1 = psi.copy()
     psi2 = psi.copy()
 
+
     if direction == 'left':
 
+        ## ARRIVIAMO CON L*L*ARR
+
         ## PRIMO STEP DELL ALGORITMO IN CUI SI CALCOLA L*L*A*R*R NON SPOSTO
+
+        ##OTTIMIZZO A
         G = tensorial_derivative(psi=psi1, b=b, site=A_loc).to_ndarray()
         Dl, d_phys, Dr = G.shape
         A = update_A(G.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
 
         psi1.set_B(A_loc-1, npc.Array.from_ndarray_trivial(A, labels=['vL', 'p', 'vR']))
 
-        G = tensorial_derivative(psi=psi1, b=b, site=A_loc+1).to_ndarray()       
+        ##OTTIMIZZO PRIMA R
+        G = tensorial_derivative(psi=psi1, b=b, site=A_loc+1).to_ndarray()     
 
+
+        ##SE R è ULTIMA è DIVERSA QUINDI CHECK BOUNDARY SU A LOC
         if A_loc != N - 1:
             Dl, d_phys, Dr = G.shape
             R = newupdate(G.reshape(Dl, Dr * d_phys).T).T.reshape(Dl, d_phys, Dr)
@@ -38,11 +46,13 @@ def double_conflict(b, psi, A_loc, direction, seed=None):
         k1 = b.overlap(psi1)
 
         ## SECONDO STEP DELL ALGORITMO IN CUI SI CALCOLA L*L*L*L*A*R STO SPOSTANDO (No check boundary perchè prima)
+        ##CAMBIO TIPO DI MATRICI A->L E R->A
         Dl, d_phys, Dr = psi.get_B(A_loc-1).to_ndarray().shape
         psi2.set_B(A_loc-1, npc.Array.from_ndarray_trivial(random_L(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(1)), labels=['vL', 'p', 'vR']))
         Dl, d_phys, Dr = psi.get_B(A_loc).to_ndarray().shape
         psi2.set_B(A_loc, npc.Array.from_ndarray_trivial(random_A(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(2)), labels=['vL', 'p', 'vR']))
 
+        ##OTTIMIZZO
         G = tensorial_derivative(psi=psi2, b=b, site=A_loc).to_ndarray()
         Dl, d_phys, Dr = G.shape
         L = newupdate(G.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
