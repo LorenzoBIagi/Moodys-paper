@@ -48,9 +48,9 @@ def double_conflict(b, psi, A_loc, direction, seed=None):
         ## SECONDO STEP DELL ALGORITMO IN CUI SI CALCOLA L*L*L*L*A*R STO SPOSTANDO (No check boundary perchè prima)
         ##CAMBIO TIPO DI MATRICI A->L E R->A
         Dl, d_phys, Dr = psi.get_B(A_loc-1).to_ndarray().shape
-        psi2.set_B(A_loc-1, npc.Array.from_ndarray_trivial(random_L(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(1)), labels=['vL', 'p', 'vR']))
+        psi2.set_B(A_loc-1, npc.Array.from_ndarray_trivial(random_L(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(1)).transpose(1,0,2), labels=['vL', 'p', 'vR']))
         Dl, d_phys, Dr = psi.get_B(A_loc).to_ndarray().shape
-        psi2.set_B(A_loc, npc.Array.from_ndarray_trivial(random_A(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(2)), labels=['vL', 'p', 'vR']))
+        psi2.set_B(A_loc, npc.Array.from_ndarray_trivial(random_A(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(2)).transpose(1,0,2), labels=['vL', 'p', 'vR']))
 
         ##OTTIMIZZO
         G = tensorial_derivative(psi=psi2, b=b, site=A_loc).to_ndarray()
@@ -89,11 +89,11 @@ def double_conflict(b, psi, A_loc, direction, seed=None):
         if A_loc != 2:
                 Dl, d_phys, Dr = G.shape
                 L = newupdate(G.transpose(1,0,2).reshape(Dl * d_phys, Dr)).reshape(d_phys, Dl, Dr).transpose(1,0,2)
-                psi1.set_B(A_loc-2, npc.Array.from_ndarray_trivial(A, labels=['vL', 'p', 'vR']))
+                psi1.set_B(A_loc-2, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
         else:
                 d_phys, Dr = G.shape
                 L =  newupdate(G).reshape(1, d_phys, Dr)
-                psi1.set_B(A_loc-2, npc.Array.from_ndarray_trivial(A, labels=['vL', 'p', 'vR']))
+                psi1.set_B(A_loc-2, npc.Array.from_ndarray_trivial(L, labels=['vL', 'p', 'vR']))
                 #SE A_loc è 2 NON POSSO PUSHARLO A SINISTRA, OTTIMIZZO E BASTA E LASCIO COSI'
                 return psi1, A_loc
       
@@ -103,9 +103,9 @@ def double_conflict(b, psi, A_loc, direction, seed=None):
         
         # CREO RANDOM R E RANDOM A 
         Dl, d_phys, Dr = psi.get_B(A_loc-1).to_ndarray().shape
-        psi2.set_B(A_loc-1, npc.Array.from_ndarray_trivial(random_R(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(1)), labels=['vL', 'p', 'vR']))
+        psi2.set_B(A_loc-1, npc.Array.from_ndarray_trivial(random_R(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(1)).transpose(1,0,2), labels=['vL', 'p', 'vR']))
         Dl, d_phys, Dr = psi.get_B(A_loc-2).to_ndarray().shape
-        psi2.set_B(A_loc-2, npc.Array.from_ndarray_trivial(random_A(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(2)), labels=['vL', 'p', 'vR']))
+        psi2.set_B(A_loc-2, npc.Array.from_ndarray_trivial(random_A(d=d_phys, Dl= Dl, Dr=Dr, seed=next_seed(2)).transpose(1,0,2), labels=['vL', 'p', 'vR']))
 
         # OTTIMIZZO RANDOM R E RANDOM A
         

@@ -26,7 +26,8 @@ def main():
         b=b_mps,
         d=3,
         D=10,
-        err=1e-18
+        err=1e-18,
+        K=4
     )
 
 
